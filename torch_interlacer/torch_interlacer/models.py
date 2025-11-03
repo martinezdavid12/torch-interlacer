@@ -79,15 +79,15 @@ class ConvNoResidualModel(nn.Module):
         super().__init__()
         self.enforce_dc = enforce_dc
         self.input_channels = input_size[0]
-        layers = []
+        conv_layers = []
 
         in_channels = self.input_channels
         for _ in range(num_layers):
-            layers.append(layers.BatchNormConv(in_channels, num_features, kernel_size))
-            layers.append(layers.get_nonlinear_layer(nonlinearity))
+            conv_layers.append(layers.BatchNormConv(in_channels, num_features, kernel_size))
+            conv_layers.append(layers.get_nonlinear_layer(nonlinearity))
             in_channels = num_features
 
-        self.conv_stack = nn.Sequential(*layers)
+        self.conv_stack = nn.Sequential(*conv_layers)
         self.out_conv = nn.Conv2d(num_features, 2, kernel_size, padding='same', bias=False)
         nn.init.kaiming_normal_(self.out_conv.weight, mode='fan_in', nonlinearity='linear')
 
@@ -106,15 +106,15 @@ class ConvResidualModel(nn.Module):
         self.input_channels = input_size[0]
         self.n_copies = num_features // 2
 
-        layers = []
+        conv_layers = []
         in_channels = self.input_channels
 
         for _ in range(num_layers):
-            layers.append(layers.BatchNormConv(in_channels, num_features, kernel_size))
-            layers.append(layers.get_nonlinear_layer(nonlinearity))
+            conv_layers.append(layers.BatchNormConv(in_channels, num_features, kernel_size))
+            conv_layers.append(layers.get_nonlinear_layer(nonlinearity))
             in_channels = num_features
 
-        self.conv_stack = nn.Sequential(*layers)
+        self.conv_stack = nn.Sequential(*conv_layers)
         self.out_conv = nn.Conv2d(num_features, 2, kernel_size, padding='same', bias=False)
         nn.init.kaiming_normal_(self.out_conv.weight, mode='fan_in', nonlinearity='linear')
 
@@ -144,7 +144,7 @@ def get_conv_no_residual_model(
   num_layers, 
   enforce_dc=False
   ):
-  return ConvNoResidualModel(input_size, nonlinearity, kernel_size, num_features, num_layers, enforce_dc=False)
+  return ConvNoResidualModel(input_size, nonlinearity, kernel_size, num_features, num_layers, enforce_dc=enforce_dc)
 
 def get_conv_residual_model(input_size, 
   nonlinearity, 
@@ -153,7 +153,7 @@ def get_conv_residual_model(input_size,
   num_layers, 
   enforce_dc=False
   ):
-  return ConvResidualModel(input_size, nonlinearity, kernel_size, num_features, num_layers, enforce_dc=False)
+  return ConvResidualModel(input_size, nonlinearity, kernel_size, num_features, num_layers, enforce_dc=enforce_dc)
     
 def crop_320(inputs):
   """Crop input frequency-space data to 320x320 in image space.

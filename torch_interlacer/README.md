@@ -5,16 +5,16 @@ PyTorch implementation of the Interlacer package for joint frequency- and image-
 ## Installation
 
 ```bash
-pip install -e .
+conda develop .
 ```
 
 ## Usage
 
 ```python
 import torch
-from torch_interlacer.models import get_interlacer_residual_model
+from torch_interlacer import models
 
-model = get_interlacer_residual_model(
+model = models.get_interlacer_residual_model(
     input_size=(2, 256, 256),
     nonlinearity='3-piece',
     kernel_size=9,
