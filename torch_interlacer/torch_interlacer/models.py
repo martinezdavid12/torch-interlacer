@@ -18,7 +18,6 @@ class InterlacerResidualModel(nn.Module):
     enforce_dc=False
   ):
     super().__init__()
-    self.debug = {}
     self.input_size = input_size
     self.num_features = num_features
     self.num_layers = num_layers
@@ -56,17 +55,12 @@ class InterlacerResidualModel(nn.Module):
     inputs_img   = utils.convert_channels_to_image(x)
     inp_img_copy = inputs_img.repeat_interleave(n_copies, dim=1)
     
-    self.debug["inputs_img"] = inputs_img
-    self.debug["inp_img_copy"] = inp_img_copy
-    self.debug["inp_copy"] = inp_copy
-    
     freq_in, img_in = x, inputs_img
     # pass through interleaved blocks
     for layer in self.layers:
       img_conv, k_conv = layer((img_in, freq_in))
       freq_in = k_conv + inp_copy
       img_in  = img_conv + inp_img_copy
-    self.debug["pre_conv_freq_in"] = freq_in
     out = self.out_conv2d(freq_in) + x
     # optional DC enforcement
     if self.enforce_dc:
@@ -134,27 +128,7 @@ class ConvResidualModel(nn.Module):
             assert dc_mask is not None
             out = dc_mask * x + (1 - dc_mask) * out
         return out
-      
-# getters
-def get_conv_no_residual_model(
-  input_size, 
-  nonlinearity, 
-  kernel_size, 
-  num_features, 
-  num_layers, 
-  enforce_dc=False
-  ):
-  return ConvNoResidualModel(input_size, nonlinearity, kernel_size, num_features, num_layers, enforce_dc=enforce_dc)
 
-def get_conv_residual_model(input_size, 
-  nonlinearity, 
-  kernel_size, 
-  num_features, 
-  num_layers, 
-  enforce_dc=False
-  ):
-  return ConvResidualModel(input_size, nonlinearity, kernel_size, num_features, num_layers, enforce_dc=enforce_dc)
-    
 def crop_320(inputs):
   """Crop input frequency-space data to 320x320 in image space.
   
@@ -185,30 +159,3 @@ def crop_320(inputs):
   icrop_k = utils.convert_to_frequency_domain(icrop_img)
   
   return icrop_k
-
-
-def get_interlacer_residual_model(
-        input_size,
-        nonlinearity,
-        kernel_size,
-        num_features,
-        num_convs,
-        num_layers,
-        enforce_dc=False):
-  """Interlacer model with residual convolutions.
-
-  Returns a model that takes a frequency-space input (of shape (batch_size, 2, H, W)) and returns a frequency-space output of the same size, comprised of interlacer layers and with connections from the input to each layer.
-
-  Args:
-    input_size(int): Tuple containing input shape, excluding batch size
-    nonlinearity(str): 'relu' or '3-piece'
-    kernel_size(int): Dimension of each convolutional filter
-    num_features(int): Number of features in each intermediate network layer
-    num_convs(int): Number of convolutions per layer
-    num_layers(int): Number of convolutional layers in model
-
-  Returns:
-    model: Torch model comprised of num_layers core interlaced layers with specified nonlinearities
-
-  """
-  return InterlacerResidualModel(input_size, nonlinearity, kernel_size, num_features, num_convs, num_layers, enforce_dc)

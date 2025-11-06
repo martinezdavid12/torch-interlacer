@@ -23,15 +23,13 @@ class BatchNormConv(nn.Module):
         else:
             self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, padding='same')
 
-    def forward(self, x, debug_channel={}):
+    def forward(self, x):
         if self.hyp_conv:
             x, hyp_tensor = x
             x = self.bn(x)
             x = self.conv((x, hyp_tensor))
         else:
             x = self.bn(x)
-            if debug_channel is not None:
-                debug_channel["BN"] = x
             x = self.conv(x)
         return x
 
@@ -61,48 +59,36 @@ class Interleaved(nn.Module):
         self.freq_bnconvs = nn.ModuleList([BatchNormConv(in_features, num_features, kernel_size=kernel_size, hyp_conv=hyp_conv)] + [BatchNormConv(num_features, num_features, kernel_size=kernel_size, hyp_conv=hyp_conv) for i in range(1, num_convs)])
         self.relu = nn.ReLU()
         self.p_relu = PiecewiseReLU()
-        self.debug_dict = {}
         
     def forward(self, x):
         if self.hyp_conv:
             img_in, freq_in, hyp_tensor = x
         else:
             img_in, freq_in = x
-        self.debug_dict["img_in"] = img_in
-        self.debug_dict["freq_in"] = freq_in
         img_in_as_freq = utils.convert_channels_to_freq(img_in)
         freq_in_as_img = utils.convert_channels_to_image(freq_in)
-        self.debug_dict["img_in_as_freq"] = img_in_as_freq
-        self.debug_dict["freq_in_as_img"] = freq_in_as_img
 
-        #print("shapes of img_in and freq_in are: " + str(img_in.shape) + " and " + str(freq_in.shape))
-        #print("shapes of img_in_as_freq and freq_in_as_img are: " + str(img_in_as_freq.shape) + " and " + str(freq_in_as_img.shape))
         img_feat = self.img_mix([img_in, freq_in_as_img])
         k_feat = self.freq_mix([freq_in, img_in_as_freq])
-        self.debug_dict["img_feat"] = img_feat
-        self.debug_dict["k_feat"] = k_feat
-        #print("shapes of img_feat and k_feat are: " + str(img_feat.shape) + " and " + str(k_feat.shape))
         for i in range(self.num_convs):
             # process image-space features
             img_bn = {}
             if self.shift:
                 img_feat = torch.fft.ifftshift(img_feat, dim=(2,3))
             if self.hyp_conv:
-                img_conv = self.img_bnconvs[i]((img_feat, hyp_tensor), debug_channel=img_bn)
+                img_conv = self.img_bnconvs[i]((img_feat, hyp_tensor))
             else:
-                img_conv = self.img_bnconvs[i](img_feat, debug_channel=img_bn)
+                img_conv = self.img_bnconvs[i](img_feat)
             img_feat = self.relu(img_conv)
-            self.debug_dict["img_bn"] = img_bn["BN"]
             # process frequency-space features
             k_bn = {}
             if self.shift:
                 k_feat = torch.fft.ifftshift(k_feat, dim=(2,3))
             if self.hyp_conv:
-                k_conv = self.freq_bnconvs[i]((k_feat, hyp_tensor), debug_channel=k_bn)
+                k_conv = self.freq_bnconvs[i]((k_feat, hyp_tensor))
             else:
-                k_conv = self.freq_bnconvs[i](k_feat, debug_channel=k_bn)
+                k_conv = self.freq_bnconvs[i](k_feat)
             k_feat = self.p_relu(k_conv)
-            self.debug_dict["k_bn"] = k_bn["BN"]
         return (img_feat, k_feat)
 
 
