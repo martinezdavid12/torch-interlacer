@@ -128,34 +128,3 @@ class ConvResidualModel(nn.Module):
             assert dc_mask is not None
             out = dc_mask * x + (1 - dc_mask) * out
         return out
-
-def crop_320(inputs):
-  """Crop input frequency-space data to 320x320 in image space.
-  
-  Args:
-    inputs (torch.Tensor): Input frequency-space data of shape (B, 2, H, W)
-  
-  Returns:
-    torch.Tensor: Cropped frequency-space data of shape (B, 2, 320, 320)
-  """
-  # Convert to image domain
-  inputs_img = utils.convert_to_image_domain(inputs)  # (B, 2, H, W)
-  
-  # Apply ifftshift
-  inputs_img_shifted = torch.fft.ifftshift(inputs_img, dim=(2, 3))
-  
-  B, C, H, W = inputs_img_shifted.shape
-  n = 320
-  
-  x_l = int(H / 2 - n / 2)
-  x_r = int(H / 2 + n / 2)
-  y_l = int(W / 2 - n / 2)
-  y_r = int(W / 2 + n / 2)
-  
-  # Crop
-  icrop_img = inputs_img_shifted[:, :, x_l:x_r, y_l:y_r]
-  
-  # Convert back to frequency domain
-  icrop_k = utils.convert_to_frequency_domain(icrop_img)
-  
-  return icrop_k
